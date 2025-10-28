@@ -66,7 +66,15 @@ public class Tile : MonoBehaviour, IPointerClickHandler
     #region Click Dedection
     public void OnPointerClick(PointerEventData eventData)
     {
-        SignalGridManager.Instance.OnTileClicked(this);
+        if (SignalGridManager.Instance.IsPeekModeActive())
+        {
+            SignalGridManager.Instance.ShowPeekInfo(this);
+        }
+        else
+        {
+            SignalGridManager.Instance.OnTileClicked(this);
+        }
+        SignalGridManager.Instance.PlayButtonClickSound();
     }
     #endregion
 

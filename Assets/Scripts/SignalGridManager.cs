@@ -38,7 +38,13 @@ public class SignalGridManager : MonoBehaviour
     [Space(10)]
     [SerializeField] private TMP_Text feedbackText;
     [Space(10)]
+    [SerializeField] private TMP_Text TileChangedCountText;
+    [Space(10)]
     [SerializeField] private GameObject winPanel;
+    [Space(10)]
+    [SerializeField] private TMP_Text peekPatternText;
+    [Space(10)]
+    [SerializeField] private GameObject peekOverlay;
     [Space(10)]
     [SerializeField] private TMP_Text winStatsText;
     [Space(10)]
@@ -49,6 +55,8 @@ public class SignalGridManager : MonoBehaviour
     [SerializeField] private bool enableTimer = true;
     [Space(10)]
     [SerializeField] private int peekUsesAllowed = 1;
+    [Space(10)]
+    [SerializeField] private AudioSource audioSource;
     #endregion
 
     #region Private Variables
@@ -59,6 +67,7 @@ public class SignalGridManager : MonoBehaviour
     private bool isGameActive = false;
     private int peekUsesRemaining;
     private Tile lastPeekedTile = null;
+    private bool isPeekModeActive = false;
     #endregion
 
     void Start()
@@ -81,13 +90,12 @@ public class SignalGridManager : MonoBehaviour
         moveCount = 0;
         gameTime = 0f;
         isGameActive = true;
+        if (peekOverlay != null) peekOverlay.SetActive(false);
         peekUsesRemaining = peekUsesAllowed;
         allTiles.Clear();
 
-        // Initialize grid array
         tileGrid = new Tile[Dimension, Dimension];
 
-        // Create tiles
         for (int y = 0; y < Dimension; y++)
         {
             for (int x = 0; x < Dimension; x++)
@@ -109,16 +117,12 @@ public class SignalGridManager : MonoBehaviour
             }
         }
 
-        // Generate toggle patterns
         GenerateTogglePatterns();
-
-        // Randomize initial state to make it solvable
         RandomizeInitialState();
-
-        // Setup UI
         UpdateMoveCounter();
         UpdateTimerDisplay();
-        UpdateFeedbackText("");
+        UpdateFeedbackText(string.Empty);
+        TileChangedCountText.text = string.Empty;
 
         if (winPanel != null) winPanel.SetActive(false);
         if (peekButton != null)
@@ -311,8 +315,7 @@ public class SignalGridManager : MonoBehaviour
 
         // Show feedback
         int tilesChanged = clickedTile.togglePattern.Count;
-        UpdateFeedbackText($"{tilesChanged} tile(s) changed!");
-        StartCoroutine(ClearFeedbackAfterDelay(1.5f));
+        TileChangedCountText.text = ($"{tilesChanged} tile(s) changed!");
 
         // Check win condition
         if (AreAllTilesOff())
@@ -324,6 +327,30 @@ public class SignalGridManager : MonoBehaviour
 
     #region Private Helper Functions
 
+    string GeneratePatternText(Tile clickedTile)
+    {
+        string result = string.Empty;
+
+        for (int y = 0; y < Dimension; y++)
+        {
+            for (int x = 0; x < Dimension; x++)
+            {
+                int index = y * Dimension + x;
+
+                if (clickedTile.togglePattern.Contains(index))
+                {
+                    result += "O  ";
+                }
+                else
+                {
+                    result += "X  ";
+                }
+            }
+            result += "\n";
+        }
+
+        return result;
+    }
     void RandomizeInitialState()
     {
         // Apply random clicks to create a solvable puzzle
@@ -409,7 +436,6 @@ public class SignalGridManager : MonoBehaviour
                 winStatsText.text = stats;
             }
         }
-
         UpdateFeedbackText("PUZZLE SOLVED!");
     }
     #endregion
@@ -440,55 +466,54 @@ public class SignalGridManager : MonoBehaviour
         }
     }
 
-    IEnumerator ClearFeedbackAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        UpdateFeedbackText("");
-    }
     #endregion
 
     #region Peek Action Handler
+    public bool IsPeekModeActive()
+    {
+        return isPeekModeActive;
+    }
+
     void EnablePeekMode()
     {
         if (peekUsesRemaining <= 0 || !isGameActive) return;
-
+        isPeekModeActive = true;
         UpdateFeedbackText("Click a tile to see its pattern!");
         StartCoroutine(WaitForPeekSelection());
     }
 
     IEnumerator WaitForPeekSelection()
     {
-        // Wait for the player to click a tile in the next frame
-        yield return null;
-
-        // The next tile clicked will show its pattern
+        // Wait for the player to click a tile in the next frame.
+        // The next tile clicked will show its pattern.
         // This is handled by modifying the click behavior temporarily
+        yield return null;
     }
 
     public void ShowPeekInfo(Tile tile)
     {
         if (peekUsesRemaining <= 0) return;
-
+        isPeekModeActive = false;
         peekUsesRemaining--;
         lastPeekedTile = tile;
         UpdatePeekButton();
 
-        // Highlight affected tiles
-        foreach (int index in tile.togglePattern)
+        // Generate text pattern
+        if (peekPatternText != null)
         {
-            if (index >= 0 && index < allTiles.Count)
-            {
-                StartCoroutine(HighlightTile(allTiles[index]));
-            }
+            string patternText = GeneratePatternText(tile);
+            peekOverlay.SetActive(true);
+            peekPatternText.text = patternText;
         }
 
-        UpdateFeedbackText($"This tile affects {tile.togglePattern.Count} tile(s). Click anywhere to continue.");
+        UpdateFeedbackText("Click anywhere to continue.");
     }
 
     void HidePeekInfo()
     {
         lastPeekedTile = null;
-        UpdateFeedbackText("");
+        if (peekOverlay != null) peekOverlay.SetActive(false);
+        UpdateFeedbackText(string.Empty);
     }
 
     IEnumerator HighlightTile(Tile tile)
@@ -530,7 +555,6 @@ public class SignalGridManager : MonoBehaviour
     #region Others
     public void RestartGame()
     {
-        // Destroy all existing tiles
         foreach (Tile tile in allTiles)
         {
             if (tile != null)
@@ -541,6 +565,12 @@ public class SignalGridManager : MonoBehaviour
 
         GameInitialization();
     }
+
+    public void PlayButtonClickSound()
+    {
+        audioSource.Play();
+    }
+
     public void QuitGame()
     {
         Application.Quit();
