@@ -1,3 +1,4 @@
+using UnityEngine.SceneManagement;
 using UnityEngine;
 using TMPro;
 
@@ -8,9 +9,9 @@ public class GameController : MonoBehaviour
     [SerializeField] private TMP_Text InfoText_TMP;
     [SerializeField] private GameObject JumpInfoUI_Obj;
     [SerializeField] private TMP_Text JumpCounterText_TMP;
+    [SerializeField] private GameObject TvScreenVisual_Obj;
+    [SerializeField] private GameObject playerCamera_Obj;
 
-    //Jump
-    private int JumpCount = 0;
     //TV
     private bool IsNearTv = false;
     private bool IsTvOn = false;
@@ -22,8 +23,8 @@ public class GameController : MonoBehaviour
     private bool IsNearDoor = false;
     private bool IsDoorOpen = false;
     //Jump Area
+    private int JumpCount = 0;
     private bool IsNearJumpArea = false;
-
 
     public void PlayerActionHandler(Transform collision)
     {
@@ -55,6 +56,16 @@ public class GameController : MonoBehaviour
         bool PressedE = Input.GetKeyDown(KeyCode.E);
         bool PressedShift = Input.GetKeyDown(KeyCode.LeftShift);
 
+        if(Input.GetKeyDown(KeyCode.X))
+        {
+            QuitApp();
+        }
+
+        if(Input.GetKeyDown(KeyCode.R))
+        {
+            RestartApp();
+        }
+
         if(PressedShift)
         {
             ShiftKeyPressedHandler();
@@ -70,9 +81,8 @@ public class GameController : MonoBehaviour
     {
         if(IsNearTable && IsScrouched)
         {
-            //Disable Scrouch
             IsKeyPicked = true;
-            IsScrouched = false;
+            DisableScrouch();
             Debug.Log("Key Picked...");
             HandleTableActions();
         }
@@ -95,13 +105,11 @@ public class GameController : MonoBehaviour
             IsDoorOpen = !IsDoorOpen;
             if(IsDoorOpen)
             {
-                //Open Door
                 OpenCloseDoor(110f);
                 Debug.Log("Door Opened...");
             }
             else
             {
-                //Close Door
                 OpenCloseDoor(0f);
                 Debug.Log("Door Closed...");
             }
@@ -110,10 +118,14 @@ public class GameController : MonoBehaviour
 
     private void ShiftKeyPressedHandler()
     {
-        if(IsNearTable && !IsScrouched && !IsKeyPicked)
+        if (IsNearTable && !IsScrouched && !IsKeyPicked)
         {
-            //Enable Scouch
-            IsScrouched = true;
+            EnableScrouch();
+            HandleTableActions();
+        }
+        else if(IsNearTable && IsScrouched)
+        {
+            DisableScrouch();
             HandleTableActions();
         }
     }
@@ -137,17 +149,18 @@ public class GameController : MonoBehaviour
         }
         if(IsNearTv && IsTvOn)
         {
-            //Turn ON TV
+            TvScreenVisual_Obj.SetActive(true);
             Debug.Log("TV Turned ON Success...");
         }
         if(IsNearTv && !IsTvOn)
         {
-            //Turn OFF TV
+            TvScreenVisual_Obj.SetActive(false);
             Debug.Log("TV Turned OFF Success...");
         }
         if(!IsNearTv)
         {
             IsTvOn = false;
+            TvScreenVisual_Obj.SetActive(false);
             DisableInfoUI();
         }
     }
@@ -168,6 +181,7 @@ public class GameController : MonoBehaviour
         }
         if (!IsNearTable)
         {
+            DisableScrouch();
             DisableInfoUI();
         }
     }
@@ -210,4 +224,26 @@ public class GameController : MonoBehaviour
         InfoText_TMP.text = string.Empty;
         InfoUI_Obj.SetActive(false);
     }
+
+    public void EnableScrouch()
+    {
+        IsScrouched = true;
+        playerCamera_Obj.transform.localPosition = new Vector3(playerCamera_Obj.transform.localPosition.x, - 0.7f, playerCamera_Obj.transform.localPosition.z);
+    }
+    public void DisableScrouch()
+    {
+        IsScrouched = false;
+        playerCamera_Obj.transform.localPosition = new Vector3(playerCamera_Obj.transform.localPosition.x, 0f, playerCamera_Obj.transform.localPosition.z);
+    }
+
+    public void QuitApp()
+    {
+        Application.Quit();
+    }
+    public void RestartApp()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
 }
+    
+
